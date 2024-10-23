@@ -69,7 +69,8 @@ Remember: Periods are the only acceptable paragraph endings. Line breaks are man
       ]
     });
     return NextResponse.json(msg);
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error('Error fetching message:', error);
     return NextResponse.json({ error: 'Failed to fetch message' }, { status: 500 });
   }
 }

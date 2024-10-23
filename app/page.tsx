@@ -11,37 +11,57 @@ import {
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/ui/toggle"
 
+const CACHE_KEY = 'cachedMessage';
+const CACHE_TIMESTAMP_KEY = 'lastApiCallTimestamp';
+const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+
 export default function Home() {
   const [message, setMessage] = useState('');
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [isEditable, setIsEditable] = useState(false);
+  const [nextOracleTime, setNextOracleTime] = useState('');
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const getMessage = useCallback(async () => {
-    try {
-      setIsEditable(false);
-      setMessage('Loading...');
-      const response = await fetch('/api/claude');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      const textContent = data.content
-        .map((block: { type: string; text: string }) => block.text)
-        .join(' ') || 'No message content';
-      
-      const formattedMessage = textContent.split('\n\n').map((paragraph: string) => paragraph.trim()).join('\n\n');
-      setMessage(formattedMessage);
-      setIsEditable(true);
-    } catch (error) {
-      console.error('Error fetching message:', error);
-      setMessage('Failed to load message');
-      setIsEditable(true);
-    }
-  }, []);
-
   useEffect(() => {
+    async function getMessage() {
+      try {
+        setIsEditable(false);
+        
+        const cachedMessage = localStorage.getItem(CACHE_KEY);
+        const lastApiCallTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+        const currentTime = new Date().getTime();
+
+        if (cachedMessage && lastApiCallTimestamp && (currentTime - parseInt(lastApiCallTimestamp) < CACHE_DURATION)) {
+          // Use cached message if it's less than 12 hours old
+          setMessage(cachedMessage);
+          setIsEditable(true);
+        } else {
+          // If cache is expired or doesn't exist, make a new API call
+          const response = await fetch('/api/claude');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          const textContent = data.content
+            .map((block: { type: string; text: string }) => block.text)
+            .join(' ') || 'No message content';
+          
+          const formattedMessage = textContent.split('\n\n').map((paragraph: string) => paragraph.trim()).join('\n\n');
+          
+          // Cache the new message and timestamp
+          localStorage.setItem(CACHE_KEY, formattedMessage);
+          localStorage.setItem(CACHE_TIMESTAMP_KEY, currentTime.toString());
+
+          setMessage(formattedMessage);
+          setIsEditable(true);
+        }
+      } catch (error) {
+        console.error('Error fetching message:', error);
+        setMessage('Failed to load message');
+        setIsEditable(true);
+      }
+    }
     getMessage();
     
     const updateDateTime = () => {
@@ -50,11 +70,35 @@ export default function Home() {
       setCurrentDateTime(formattedDateTime);
     };
    
+    const updateNextOracleTime = () => {
+      const lastApiCallTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+      if (lastApiCallTimestamp) {
+        const nextCallTime = parseInt(lastApiCallTimestamp) + CACHE_DURATION;
+        const timeRemaining = nextCallTime - new Date().getTime();
+        
+        if (timeRemaining > 0) {
+          const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
+          const minutes = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+          const seconds = Math.floor((timeRemaining % (60 * 1000)) / 1000);
+          setNextOracleTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        } else {
+          setNextOracleTime('Now');
+        }
+      } else {
+        setNextOracleTime('Now');
+      }
+    };
+
     updateDateTime();
-    const interval = setInterval(updateDateTime, 1000);
+    updateNextOracleTime();
+    const dateTimeInterval = setInterval(updateDateTime, 1000);
+    const oracleTimeInterval = setInterval(updateNextOracleTime, 1000);
    
-    return () => clearInterval(interval);
-  }, [getMessage]);
+    return () => {
+      clearInterval(dateTimeInterval);
+      clearInterval(oracleTimeInterval);
+    };
+  }, []);
 
   const copyToClipboard = useCallback(() => {
     if (contentRef.current) {
@@ -79,7 +123,7 @@ export default function Home() {
       </div>
       
       <header className="text-center mb-8">
-        <h1>Agentic Loreform</h1>
+        <h1 className="text-xs">Agentic Loreform</h1>
       </header>
 
       <main className="flex-grow flex flex-col items-center justify-center">
@@ -87,30 +131,27 @@ export default function Home() {
           ref={contentRef}
           contentEditable={isEditable}
           onInput={handleContentChange}
-          className="border p-4 w-full max-w-md text-sm mb-4 whitespace-pre-wrap overflow-y-auto"
+          className="border p-4 w-full max-w-md text-sm mb-4 whitespace-pre-wrap overflow-y-auto flex items-center justify-center"
           style={{ minHeight: '200px', maxHeight: '60vh' }}
         >
-          {message}
+          <div className="text-xs w-full text-center">
+            {!isEditable ? 'Loading...' : message}
+          </div>
         </div>
-        <div className="flex space-x-4">
-          <Button 
-            variant="outline"
-            onClick={copyToClipboard}
-            disabled={!message || message === 'Loading...'}
-          >
-            {isCopied ? 'Copied!' : 'Copy text'}
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={getMessage}
-            disabled={message === 'Loading...'}
-          >
-            Regenerate
-          </Button>
+        <Button 
+          className="text-xs"
+          variant="outline"
+          onClick={copyToClipboard}
+          disabled={!message}
+        >
+          {isCopied ? 'Copied!' : 'Copy text'}
+        </Button>
+        <div className="mt-4 text-xs">
+          Next Oracle — {nextOracleTime}
         </div>
       </main>
 
-      <footer className="mt-8 text-center">
+      <footer className="text-xs mt-auto pt-8 text-center">
         <motion.div
           whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 300 }}
