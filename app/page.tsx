@@ -13,7 +13,7 @@ import { ModeToggle } from "@/components/ui/toggle"
 
 const CACHE_KEY = 'cachedMessage';
 const CACHE_TIMESTAMP_KEY = 'lastApiCallTimestamp';
-const CACHE_DURATION = 60 * 1000; // 1 minute in milliseconds
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
 export default function Home() {
   const [message, setMessage] = useState('');
@@ -29,7 +29,7 @@ export default function Home() {
         const currentTime = new Date().getTime();
 
         if (cachedMessage && lastApiCallTimestamp && (currentTime - parseInt(lastApiCallTimestamp) < CACHE_DURATION)) {
-          // Use cached message if it's less than 1 minute old
+          // Use cached message if it's less than 1 hour old
           setMessage(cachedMessage);
         } else {
           // If cache is expired or doesn't exist, make a new API call
@@ -58,7 +58,7 @@ export default function Home() {
 
     getMessage(); // Initial call
 
-    // Set up interval to fetch message every minute
+    // Set up interval to fetch message every hour
     const messageInterval = setInterval(getMessage, CACHE_DURATION);
     
     const updateDateTime = () => {
@@ -92,11 +92,9 @@ export default function Home() {
     const oracleTimeInterval = setInterval(updateNextOracleTime, 1000);
    
     return () => {
-      clearInterval(dateTimeInterval);
-      clearInterval(oracleTimeInterval);
-      clearInterval(messageInterval); // Clear the new interval on cleanup
+      clearInterval(messageInterval); // Clear the interval on cleanup
     };
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(message).then(() => {
