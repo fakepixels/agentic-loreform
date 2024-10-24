@@ -1,6 +1,6 @@
 "use client"; 
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Tooltip,
@@ -13,29 +13,24 @@ import { ModeToggle } from "@/components/ui/toggle"
 
 const CACHE_KEY = 'cachedMessage';
 const CACHE_TIMESTAMP_KEY = 'lastApiCallTimestamp';
-const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+const CACHE_DURATION = 60 * 1000; // 1 minute in milliseconds
 
 export default function Home() {
   const [message, setMessage] = useState('');
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [isCopied, setIsCopied] = useState(false);
-  const [isEditable, setIsEditable] = useState(false);
   const [nextOracleTime, setNextOracleTime] = useState('');
-  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function getMessage() {
       try {
-        setIsEditable(false);
-        
         const cachedMessage = localStorage.getItem(CACHE_KEY);
         const lastApiCallTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
         const currentTime = new Date().getTime();
 
         if (cachedMessage && lastApiCallTimestamp && (currentTime - parseInt(lastApiCallTimestamp) < CACHE_DURATION)) {
-          // Use cached message if it's less than 12 hours old
+          // Use cached message if it's less than 1 minute old
           setMessage(cachedMessage);
-          setIsEditable(true);
         } else {
           // If cache is expired or doesn't exist, make a new API call
           const response = await fetch('/api/claude');
@@ -54,15 +49,17 @@ export default function Home() {
           localStorage.setItem(CACHE_TIMESTAMP_KEY, currentTime.toString());
 
           setMessage(formattedMessage);
-          setIsEditable(true);
         }
       } catch (error) {
         console.error('Error fetching message:', error);
         setMessage('Failed to load message');
-        setIsEditable(true);
       }
     }
-    getMessage();
+
+    getMessage(); // Initial call
+
+    // Set up interval to fetch message every minute
+    const messageInterval = setInterval(getMessage, CACHE_DURATION);
     
     const updateDateTime = () => {
       const now = new Date();
@@ -97,24 +94,16 @@ export default function Home() {
     return () => {
       clearInterval(dateTimeInterval);
       clearInterval(oracleTimeInterval);
+      clearInterval(messageInterval); // Clear the new interval on cleanup
     };
   }, []);
 
   const copyToClipboard = useCallback(() => {
-    if (contentRef.current) {
-      const text = contentRef.current.innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-      });
-    }
-  }, []);
-
-  const handleContentChange = useCallback(() => {
-    if (contentRef.current) {
-      setMessage(contentRef.current.innerText);
-    }
-  }, []);
+    navigator.clipboard.writeText(message).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  }, [message]);
 
   return (
     <div className="flex flex-col min-h-screen p-8 sm:p-20 font-[family-name:var(--font-geist-sans)] relative">
@@ -128,14 +117,11 @@ export default function Home() {
 
       <main className="flex-grow flex flex-col items-center justify-center">
         <div 
-          ref={contentRef}
-          contentEditable={isEditable}
-          onInput={handleContentChange}
-          className="border p-4 w-full max-w-md text-sm mb-4 whitespace-pre-wrap overflow-y-auto flex items-center justify-center"
+          className="border p-4 w-full max-w-md text-sm mb-4 whitespace-pre-wrap overflow-y-auto"
           style={{ minHeight: '200px', maxHeight: '60vh' }}
         >
           <div className="text-xs w-full text-center">
-            {!isEditable ? 'Loading...' : message}
+            {message || 'Loading...'}
           </div>
         </div>
         <Button 
