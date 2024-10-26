@@ -28,8 +28,8 @@ export default function Home() {
         const lastApiCallTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
         const currentTime = new Date().getTime();
 
-        if (cachedMessage && lastApiCallTimestamp && (currentTime - parseInt(lastApiCallTimestamp) < CACHE_DURATION)) {
-          // Use cached message if it's less than 1 hour old
+        if (cachedMessage && lastApiCallTimestamp && (currentTime - Number.parseInt(lastApiCallTimestamp) < CACHE_DURATION)) {
+          
           setMessage(cachedMessage);
         } else {
           // If cache is expired or doesn't exist, make a new API call
@@ -56,7 +56,7 @@ export default function Home() {
       }
     }
 
-    getMessage(); // Initial call
+    getMessage(); 
 
     // Set up interval to fetch message every hour
     const messageInterval = setInterval(getMessage, CACHE_DURATION);
@@ -70,7 +70,7 @@ export default function Home() {
     const updateNextOracleTime = () => {
       const lastApiCallTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
       if (lastApiCallTimestamp) {
-        const nextCallTime = parseInt(lastApiCallTimestamp) + CACHE_DURATION;
+        const nextCallTime = Number.parseInt(lastApiCallTimestamp) + CACHE_DURATION;
         const timeRemaining = nextCallTime - new Date().getTime();
         
         if (timeRemaining > 0) {
@@ -88,11 +88,9 @@ export default function Home() {
 
     updateDateTime();
     updateNextOracleTime();
-    const dateTimeInterval = setInterval(updateDateTime, 1000);
-    const oracleTimeInterval = setInterval(updateNextOracleTime, 1000);
    
     return () => {
-      clearInterval(messageInterval); // Clear the interval on cleanup
+      clearInterval(messageInterval); 
     };
   }, []); // Empty dependency array to run only once on mount
 

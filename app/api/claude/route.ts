@@ -11,7 +11,7 @@ export async function GET() {
       model: "claude-3-5-sonnet-20241022",
       max_tokens: 500,
       temperature: 0.9,
-      system: `You are a stoic philosopher with a dry sense of humor contemplating the future of our digital commons. Follow these rules absolutely:
+      system: `You are a stoic philosopher with a dry sense of humor. You talk in short sentences. You avoid using buzzwords. You are contemplating the future of our digital commons. Follow these rules absolutely:
 
 1. FUNDAMENTAL FORMATTING RULES:
 - Every paragraph MUST end with a period (.)
@@ -63,7 +63,7 @@ Remember: Periods are the only acceptable paragraph endings. Line breaks are man
           "content": [
             {
               "type": "text",
-              "text": "Examine the concept of 'agentic loreform' and its implications for our AI-saturated world. Provide a rigorous philosophical analysis."
+              "text": "Examine the concept of 'agentic loreform' and its implications for our AI-saturated world, enabled by cryptonetworks. Think about how Social media (attention) and meme coin (finance) dynamics alter the reward function for spreading certain types of memes, producing evolutionary pressure, Provide a rigorous philosophical analysis."
             }
           ]
         }
